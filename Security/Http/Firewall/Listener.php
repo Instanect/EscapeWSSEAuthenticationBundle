@@ -13,6 +13,7 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken as Token;
 
 use UnexpectedValueException;
+use Symfony\Component\HttpKernel\Log\LoggerInterface;
 
 class Listener implements ListenerInterface
 {
@@ -59,41 +60,44 @@ class Listener implements ListenerInterface
         $request = $event->getRequest();
 
         //find out if the current request contains any information by which the user might be authenticated
-        if(!$request->headers->has('X-WSSE'))
-        {
+        if (!$request->headers->has('X-WSSE')) {
             return;
         }
 
         $ae_message = null;
         $this->wsseHeader = $request->headers->get('X-WSSE');
+
+        ini_set("log_errors", "On");
+        ini_set("display_errors", "Off");
+        error_reporting(E_ALL);
+        error_log($this->wsseHeader);
+
         $wsseHeaderInfo = $this->parseHeader();
 
-        if($wsseHeaderInfo !== false)
-        {
+        if ($wsseHeaderInfo !== false) {
             $token = new Token(
                 $wsseHeaderInfo['Username'],
-                $wsseHeaderInfo['PasswordDigest'],
+                $wsseHeaderInfo['Password'],
                 $this->providerKey
             );
 
-            $token->setAttribute('nonce', $wsseHeaderInfo['Nonce']);
-            $token->setAttribute('created', $wsseHeaderInfo['Created']);
+            //     $token->setAttribute('nonce', $wsseHeaderInfo['Nonce']);
+            //    $token->setAttribute('created', $wsseHeaderInfo['Created']);
 
-            try
-            {
+            if (isset($wsseHeaderInfo['isRaw']))
+                $token->setAttribute('is_raw', true);
+
+
+            try {
                 $returnValue = $this->authenticationManager->authenticate($token);
 
-                if($returnValue instanceof TokenInterface)
-                {
+                if ($returnValue instanceof TokenInterface) {
                     return $this->securityContext->setToken($returnValue);
-                }
-                else if($returnValue instanceof Response)
-                {
-                    return $event->setResponse($returnValue);
-                }
-            }
-            catch(AuthenticationException $ae)
-            {
+                } else
+                    if ($returnValue instanceof Response) {
+                        return $event->setResponse($returnValue);
+                    }
+            } catch (AuthenticationException $ae) {
                 $event->setResponse($this->authenticationEntryPoint->start($request, $ae));
             }
         }
@@ -108,17 +112,13 @@ class Listener implements ListenerInterface
      */
     private function parseValue($key)
     {
-        if(!preg_match('/'.$key.'="([^"]+)"/', $this->wsseHeader, $matches))
-        {
-            throw new UnexpectedValueException('The string was not found');
-        }
+        return preg_match('/' . $key . '="([^"]+)"/', $this->wsseHeader, $matches) ? $matches[1] : false;
 
-        return $matches[1];
     }
 
     /**
      * This method parses the X-WSSE header
-     * 
+     *
      * If Username, PasswordDigest, Nonce and Created exist then it returns their value,
      * otherwise the method returns false.
      *
@@ -128,18 +128,19 @@ class Listener implements ListenerInterface
     {
         $result = array();
 
-        try
-        {
-            $result['Username'] = $this->parseValue('Username');
-            $result['PasswordDigest'] = $this->parseValue('PasswordDigest');
-            $result['Nonce'] = $this->parseValue('Nonce');
-            $result['Created'] = $this->parseValue('Created');
-        }
-        catch(UnexpectedValueException $e)
-        {
-            return false;
-        }
+        $result['Username'] = $this->parseValue('Username');
+        $result['Password'] = $this->parseValue('Password');
 
-        return $result;
+        $isRaw = $this->parseValue('isRaw');
+        if ($isRaw == true)
+            $result['isRaw'] = true;
+
+        return $this->checkResult($result);
+    }
+
+    public function checkResult($result)
+    {
+        return !(empty($result['Username'])
+            || empty($result['Password'])) ? $result : false;
     }
 }
