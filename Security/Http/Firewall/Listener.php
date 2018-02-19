@@ -4,13 +4,16 @@ namespace Escape\WSSEAuthenticationBundle\Security\Http\Firewall;
 
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
+use Symfony\Component\Security\Http\Firewall\ListenerInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Core\SecurityContextInterface;
 use Symfony\Component\Security\Core\Authentication\AuthenticationManagerInterface;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken as Token;
-use Symfony\Component\Security\Core\Exception\AuthenticationException;
-use Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface;
-use Symfony\Component\Security\Http\Firewall\ListenerInterface;
+
+use UnexpectedValueException;
+use Symfony\Component\HttpKernel\Log\LoggerInterface;
 
 class Listener implements ListenerInterface
 {
@@ -20,9 +23,9 @@ class Listener implements ListenerInterface
     private $wsseHeader;
 
     /**
-     * @var TokenStorageInterface
+     * @var SecurityContextInterface
      */
-    protected $tokenStorage;
+    protected $securityContext;
 
     /**
      * @var AuthenticationManagerInterface
@@ -40,22 +43,18 @@ class Listener implements ListenerInterface
     protected $authenticationEntryPoint;
 
     public function __construct(
-        TokenStorageInterface $tokenStorage,
+        SecurityContextInterface $securityContext,
         AuthenticationManagerInterface $authenticationManager,
         $providerKey,
         AuthenticationEntryPointInterface $authenticationEntryPoint
     )
     {
-        $this->tokenStorage = $tokenStorage;
+        $this->securityContext = $securityContext;
         $this->authenticationManager = $authenticationManager;
         $this->providerKey = $providerKey;
         $this->authenticationEntryPoint = $authenticationEntryPoint;
     }
 
-    /**
-     * @param GetResponseEvent $event
-     * @throws \InvalidArgumentException
-     */
     public function handle(GetResponseEvent $event)
     {
         $request = $event->getRequest();
@@ -93,7 +92,7 @@ class Listener implements ListenerInterface
                 $returnValue = $this->authenticationManager->authenticate($token);
 
                 if ($returnValue instanceof TokenInterface) {
-                    return $this->tokenStorage->setToken($returnValue);
+                    return $this->securityContext->setToken($returnValue);
                 } else
                     if ($returnValue instanceof Response) {
                         return $event->setResponse($returnValue);
