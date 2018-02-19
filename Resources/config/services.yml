@@ -5,7 +5,7 @@ services:
 
     escape_wsse_authentication.listener:
         class:  %escape_wsse_authentication.listener.class%
-        arguments: ['@security.context', '@security.authentication.manager']
+        arguments: ['@security.token_storage', '@security.authentication.manager']
 
     escape_wsse_authentication.entry_point:
         class:  %escape_wsse_authentication.entry_point.class%
