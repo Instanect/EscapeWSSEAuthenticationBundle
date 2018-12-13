@@ -2,11 +2,12 @@
 
 namespace Escape\WSSEAuthenticationBundle\Security\Http\EntryPoint;
 
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Log\LoggerInterface;
+
 
 class EntryPoint implements AuthenticationEntryPointInterface
 {
