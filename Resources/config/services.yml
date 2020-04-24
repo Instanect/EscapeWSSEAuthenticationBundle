@@ -17,4 +17,4 @@ services:
 
     escape_wsse_authentication.nonce_cache:
         class:  escape_wsse_authentication.nonce_cache.class
-        arguments: [kernel.cache_dir%/security/nonces"]
+        arguments: [kernel.cache_dir/security/nonces]
