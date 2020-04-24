@@ -4,13 +4,17 @@ namespace Escape\WSSEAuthenticationBundle\Security\Http\Firewall;
 
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
-use Symfony\Component\Security\Core\Authentication\AuthenticationManagerInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Http\Firewall\ListenerInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Core\SecurityContextInterface;
+use Symfony\Component\Security\Core\Authentication\AuthenticationManagerInterface;
+use Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken as Token;
-use Symfony\Component\Security\Core\Exception\AuthenticationException;
-use Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface;
-use Symfony\Component\Security\Http\Firewall\ListenerInterface;
+
+use UnexpectedValueException;
+use Symfony\Component\HttpKernel\Log\LoggerInterface;
 
 class Listener implements ListenerInterface
 {
@@ -20,7 +24,7 @@ class Listener implements ListenerInterface
     private $wsseHeader;
 
     /**
-     * @var TokenStorageInterface
+     * @var SecurityContextInterface|TokenStorageInterface
      */
     protected $tokenStorage;
 
@@ -52,10 +56,6 @@ class Listener implements ListenerInterface
         $this->authenticationEntryPoint = $authenticationEntryPoint;
     }
 
-    /**
-     * @param GetResponseEvent $event
-     * @throws \InvalidArgumentException
-     */
     public function handle(GetResponseEvent $event)
     {
         $request = $event->getRequest();
